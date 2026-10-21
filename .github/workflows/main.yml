@@ -10,8 +10,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Download source
+      - name: Download repository
         uses: actions/checkout@v4
 
       - name: Set up Java
@@ -20,15 +21,31 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Find and extract Android project
+        run: |
+          set -e
+          ZIP=$(find . -maxdepth 2 -name 'LivingWorld_AutoBuild_v0_6_source.zip' -print -quit)
+          if [ -n "$ZIP" ]; then
+            mkdir -p extracted
+            unzip -o "$ZIP" -d extracted
+          fi
+          PROJECT=$(find . -type f -name settings.gradle -o -name settings.gradle.kts | head -n 1)
+          if [ -z "$PROJECT" ]; then
+            echo "Gradle project not found. Check the ZIP contents."
+            find . -maxdepth 4 -type f | head -n 100
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$PROJECT")" >> "$GITHUB_ENV"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build APK
-        run: gradle assembleDebug
+        run: gradle -p "$PROJECT_DIR" assembleDebug
 
       - name: Save APK
         uses: actions/upload-artifact@v4
         with:
           name: LivingWorld-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: '**/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
