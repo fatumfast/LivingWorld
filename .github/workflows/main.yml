@@ -1,5 +1,5 @@
 
-name: Build LivingWorld APK
+name: Build Living World Gaming Toolkit APK
 
 on:
   workflow_dispatch:
@@ -7,46 +7,64 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Find and extract Android project
-        run: |
-          set -e
-          ZIP=$(find . -maxdepth 1 -name "LivingWorld_v1_1_0_ai_performance_fixed_root-1.zip" -print -quit)
-          if [ -n "$ZIP" ]; then
-            mkdir -p extracted
-            unzip -o "$ZIP" -d extracted
-          fi
-          PROJECT=$(find . -type f -name settings.gradle -o -name settings.gradle.kts | head -n 1)
-          if [ -z "$PROJECT" ]; then
-            echo "Gradle project not found. Check the ZIP contents."
-            find . -maxdepth 4 -type f | head -n 100
-            exit 1
-          fi
-          echo "PROJECT_DIR=$(dirname "$PROJECT")" >> "$GITHUB_ENV"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build APK
-        run: gradle -p "$PROJECT_DIR" assembleDebug
 
-      - name: Save APK
+      - name: Extract Gaming Toolkit project
+        run: |
+          set -eu
+          ZIP="./LivingWorld_Gaming_Toolkit_v2_0_0.zip"
+          test -f "$ZIP" || {
+            echo "Gaming Toolkit ZIP not found: $ZIP"
+            exit 1
+          }
+          mkdir -p extracted
+          unzip -o "$ZIP" -d extracted
+          PROJECT_FILE=$(find extracted -type f -name settings.gradle.kts -print -quit)
+          test -n "$PROJECT_FILE" || {
+            echo "Gradle project not found in ZIP"
+            exit 1
+          }
+          PROJECT_DIR="$(dirname "$PROJECT_FILE")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Project directory: $PROJECT_DIR"
+
+      - name: Generate Gradle wrapper
+        run: gradle -p "$PROJECT_DIR" wrapper --gradle-version 8.9
+
+      - name: Build Gaming Toolkit APK
+        run: |
+          chmod +x "$PROJECT_DIR/gradlew"
+          "$PROJECT_DIR/gradlew" -p "$PROJECT_DIR" --no-daemon assembleDebug
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LivingWorld-debug-apk
-          path: '**/build/outputs/apk/debug/*.apk'
+          name: LivingWorld-Gaming-Toolkit-v2.0.0
+          path: extracted/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
