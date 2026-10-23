@@ -24,7 +24,7 @@ jobs:
       - name: Find and extract Android project
         run: |
           set -e
-          ZIP=$(find . -maxdepth 2 -name "LivingWorld_AutoBuild_v1_0_0_max_refresh_testbuild.zip" -print -quit)
+          ZIP=$(find . -maxdepth 2 -name "LivingWorld_AutoBuild_v1_1_0_ai_performance.zip" -print -quit)
           if [ -n "$ZIP" ]; then
             mkdir -p extracted
             unzip -o "$ZIP" -d extracted
