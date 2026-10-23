@@ -1,6 +1,6 @@
 name: Build Living World Gaming Toolkit APK
 
-"on":
+'on':
 push:
 branches:
 - main
